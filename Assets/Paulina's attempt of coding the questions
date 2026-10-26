@@ -1,0 +1,187 @@
+//this is the code for when a player were to bump into an NPC and be asked an interactive graphing question
+
+using UnityEngine;
+using UnityEngine.UI;
+
+public class SignalGraph : Graphic
+{
+    public float shift = 0f;
+
+    protected override void OnPopulateMesh(VertexHelper vh)
+    {
+        vh.Clear();
+
+        Rect r = rectTransform.rect;
+
+        float scaleX = r.width / 8f;
+        float scaleY = r.height / 2.5f;
+
+        float centerX = r.center.x;
+        float baseline = r.yMin + r.height * 0.25f;
+
+        // Rectangular pulse x(t), shifted horizontally
+        Vector2[] points =
+        {
+            new Vector2(-4, 0),
+            new Vector2(0, 0),
+            new Vector2(0, 1),
+            new Vector2(1, 1),
+            new Vector2(1, 0),
+            new Vector2(4, 0)
+        };
+
+        for (int i = 0; i < points.Length - 1; i++)
+        {
+            Vector2 a = points[i];
+            Vector2 b = points[i + 1];
+
+            a.x += shift;
+            b.x += shift;
+
+            a = new Vector2(
+                centerX + a.x * scaleX,
+                baseline + a.y * scaleY
+            );
+
+            b = new Vector2(
+                centerX + b.x * scaleX,
+                baseline + b.y * scaleY
+            );
+
+            DrawLine(vh, a, b, 4f, color);
+        }
+    }
+
+    void DrawLine(
+        VertexHelper vh,
+        Vector2 a,
+        Vector2 b,
+        float thickness,
+        Color lineColor)
+    {
+        Vector2 direction = (b - a).normalized;
+        Vector2 normal =
+            new Vector2(-direction.y, direction.x)
+            * thickness / 2f;
+
+        int index = vh.currentVertCount;
+
+        vh.AddVert(a - normal, lineColor, Vector2.zero);
+        vh.AddVert(a + normal, lineColor, Vector2.zero);
+        vh.AddVert(b + normal, lineColor, Vector2.zero);
+        vh.AddVert(b - normal, lineColor, Vector2.zero);
+
+        vh.AddTriangle(index, index + 1, index + 2);
+        vh.AddTriangle(index, index + 2, index + 3);
+    }
+
+    public void SetShift(float newShift)
+    {
+        shift = newShift;
+        SetVerticesDirty();
+    }
+}
+
+//now this controls when the question opens, updates the graph, checks the student's answer, and returns control to the player.
+
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+
+public class QuestionManager : MonoBehaviour
+{
+    public GameObject questionPanel;
+    public PlayerMovement player;
+    public SignalGraph graph;
+
+    public Slider shiftSlider;
+    public TMP_Text questionText;
+    public TMP_Text shiftValueText;
+    public TMP_Text feedbackText;
+
+    public Button checkButton;
+    public Button continueButton;
+
+    private float correctShift = 2f;
+    private bool answered = false;
+
+    private void Start()
+    {
+        questionPanel.SetActive(false);
+
+        shiftSlider.minValue = -3;
+        shiftSlider.maxValue = 3;
+        shiftSlider.wholeNumbers = true;
+
+        shiftSlider.onValueChanged.AddListener(UpdateGraph);
+        checkButton.onClick.AddListener(CheckAnswer);
+        continueButton.onClick.AddListener(CloseQuestion);
+    }
+
+    public void OpenQuestion()
+    {
+        if (answered) return;
+
+        player.canMove = false;
+        questionPanel.SetActive(true);
+
+        questionText.text =
+            "Professor Wave: Transform x(t) into x(t-2).";
+
+        shiftSlider.value = 0;
+        UpdateGraph(0);
+
+        feedbackText.text = "";
+        checkButton.gameObject.SetActive(true);
+        continueButton.gameObject.SetActive(false);
+    }
+
+    public void UpdateGraph(float value)
+    {
+        graph.SetShift(value);
+        shiftValueText.text = "Shift: " + value.ToString("F0");
+    }
+
+    public void CheckAnswer()
+    {
+        float studentShift = shiftSlider.value;
+
+        if (Mathf.Abs(studentShift - correctShift) < 0.01f)
+        {
+            answered = true;
+
+            feedbackText.text =
+                "Correct! x(t-2) shifts right by 2 units.";
+
+            checkButton.gameObject.SetActive(false);
+            continueButton.gameObject.SetActive(true);
+        }
+        else
+        {
+            feedbackText.text =
+                "Try again! Remember that x(t-a) shifts right.";
+        }
+    }
+
+    public void CloseQuestion()
+    {
+        questionPanel.SetActive(false);
+        player.canMove = true;
+    }
+}
+
+//this makes NPC trigger the question
+using UnityEngine;
+
+public class ProfessorWaveNPC : MonoBehaviour
+{
+    public QuestionManager questionManager;
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            questionManager.OpenQuestion();
+        }
+    }
+}
