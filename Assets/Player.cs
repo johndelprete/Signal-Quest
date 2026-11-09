@@ -1,12 +1,17 @@
 using UnityEngine;
+using System.Collections;
 
 public class Player : MonoBehaviour
 {
     public int level = 1;
     public int health = 10;
 
-    void Start () {
-        if (LoadManager.loadSavedGame) {
+    IEnumerator Start()
+    {
+        if (LoadManager.loadSavedGame)
+        {
+            yield return null; // Wait one frame for map/player setup.
+
             LoadPlayer();
             LoadManager.loadSavedGame = false;
         }
@@ -29,6 +34,7 @@ public class Player : MonoBehaviour
         position.x = data.position[0];
         position.y = data.position[1];
         position.z = data.position[2];
+        Debug.Log("Loading player to: " + position);
         transform.position = position;
     }
 }

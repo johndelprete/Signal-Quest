@@ -1,9 +1,10 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class MenuManager : MonoBehaviour
 {
     public GameObject SettingsMenu;
-    //public AudioSource gameAudio;
+    public AudioSource gameAudio;
 
     private bool paused;
 
@@ -14,8 +15,14 @@ public class MenuManager : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (SettingsState.isOpen) {
+            return;
+        }
+
+        if (Keyboard.current != null &&
+            Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+
             if (paused)
                 Resume();
             else
@@ -28,7 +35,10 @@ public class MenuManager : MonoBehaviour
         SettingsMenu.SetActive(true);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-        //gameAudio.Pause();
+
+        if (gameAudio != null)
+            gameAudio.Pause();
+
         Time.timeScale = 0f;
         paused = true;
     }
@@ -38,7 +48,10 @@ public class MenuManager : MonoBehaviour
         SettingsMenu.SetActive(false);
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
-        //gameAudio.Play();
+
+        if (gameAudio != null)
+            gameAudio.UnPause();
+
         Time.timeScale = 1f;
         paused = false;
     }
